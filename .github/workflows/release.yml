@@ -1,0 +1,61 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  create-tag-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Generate timestamp tag
+        id: tag
+        run: |
+          TS=$(date -u +'%Y.%m.%d.%H%M%S')
+          echo "timestamp=v${TS}"
+          echo "timestamp=v${TS}" >> $GITHUB_OUTPUT
+
+      - name: Build JAR
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Rename JAR with version
+        run: |
+          mv CrazyEights.jar "CrazyEights-${{ steps.tag.outputs.timestamp }}.jar"
+
+      - name: Create Release and Upload JAR
+        uses: softprops/action-gh-release@v1
+        with:
+          files: CrazyEights-*.jar
+          tag_name: ${{ steps.tag.outputs.timestamp }}
+          name: "Build ${{ steps.tag.outputs.timestamp }}"
+          body: |
+            ## Crazy Eights Card Game
+
+            **How to run:**
+            ```bash
+            java -jar CrazyEights-${{ steps.tag.outputs.timestamp }}.jar
+            ```
+
+            **Requirements:**
+            - Java 8 or higher
+
+            **Game Instructions:**
+            - Press ENTER after each turn to advance
+            - First player to empty their hand wins!
+          generate_release_notes: true
+          draft: false
+          prerelease: false
